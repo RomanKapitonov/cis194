@@ -1,3 +1,4 @@
+import Data.List
 -- Exercise 1: Wholemeal programming
 -- Reimplement each of the following functions in a more idiomatic
 -- Haskell style. Use wholemeal programming practices, breaking each
@@ -94,6 +95,9 @@ map' f = foldr (\x acc -> f x : acc) []
 -- foldr f z [x1, x2, ..., xn] == x1 ‘f‘ (x2 ‘f‘ ... (xn ‘f‘ z)...)
 -- foldl f z [x1, x2, ..., xn] == (...((z ‘f‘ x1) ‘f‘ x2) ‘f‘...) ‘f‘ xn
 
+-- foldl :: Foldable t => (b -> a -> b) -> b -> t a -> b
+-- foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
+
 myFoldl :: (a -> b -> a) -> a -> [b] -> a
 myFoldl f base xs = undefined
 
@@ -112,5 +116,9 @@ myFoldl f base xs = undefined
 -- cartProd :: [a] -> [b] -> [(a, b)]
 -- cartProd xs ys = [(x,y) | x <- xs, y <- ys]
 
+exclude :: Integer -> [Integer]
+exclude n = [i + j + 2 * i * j | i <- [1..n], j <- [i..n]]
+
 sieveSundaram :: Integer -> [Integer]
-sieveSundaram = undefined
+sieveSundaram n = let excluded = exclude n in
+  2:[2 * p + 1 | p <- [1..n], p `notElem` excluded]
