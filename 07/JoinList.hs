@@ -1,7 +1,19 @@
+{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
+
 module JoinList where
 
 import Sized
+import Scrabble
 import Data.Monoid
+import StringBuffer
+import Buffer
+import Editor
+
+-- import Data.Monoid
+-- import Buffer
+-- import Editor
+-- import Sized
+-- import Scrabble
 
 data JoinList m a = Empty
   | Single m a
@@ -112,4 +124,45 @@ takeJ n (Append _ l r)
   where
     left_size = getSize . size . tag $ l
 
--- TODO: Ex3 + Ex4
+
+scoreLine :: String -> JoinList Score String
+scoreLine xs = Single (scoreString xs) xs
+
+-- class Buffer b where
+
+--   -- | Convert a buffer to a String.
+--   toString :: b -> String
+
+--   -- | Create a buffer from a String.
+--   fromString :: String -> b
+
+--   -- | Extract the nth line (0-indexed) from a buffer.  Return Nothing
+--   -- for out-of-bounds indices.
+--   line :: Int -> b -> Maybe String
+
+--   -- | @replaceLine n ln buf@ returns a modified version of @buf@,
+--   --   with the @n@th line replaced by @ln@.  If the index is
+--   --   out-of-bounds, the buffer should be returned unmodified.
+--   replaceLine :: Int -> String -> b -> b
+
+--   -- | Compute the number of lines in the buffer.
+--   numLines :: b -> Int
+
+--   -- | Compute the value of the buffer, i.e. the amount someone would
+--   --   be paid for publishing the contents of the buffer.
+--   value :: b -> Int
+
+instance Buffer (JoinList (Score, Size) String) where
+  toString = concat . jlToList
+  fromString =  foldr1 (+++) . map (\l -> Single (scoreString l, Size 1) l) . lines
+  line = indexJ
+
+  replaceLine i s l = takeJ (i-1) l +++ fromString s +++ dropJ i l
+
+  numLines Empty = 0
+  numLines (Single (_,Size n) _) = n
+  numLines (Append (_,Size n) _ _) = n
+
+  value Empty = 0
+  value (Single (Score n,_) _) = n
+  value (Append (Score n,_) _ _) = n
