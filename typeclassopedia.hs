@@ -1,3 +1,4 @@
+import Data.Functor
 -- Implement Functor instances for Either e and ((->) e).
 
 instance Functor (Either a) where
@@ -47,3 +48,114 @@ instance Functor ListOfMaybe where
 
 instance Functor MaybeOfList where
   fmap f (MaybeOfList xs) = MaybeOfList (fmap (fmap f) xs)
+
+data IntAndSmth a = IntAndSmth Int a deriving (Show, Eq)
+
+instance Functor IntAndSmth where
+  fmap f (IntAndSmth _ x) = IntAndSmth 1 (f x)
+
+-- Although it is not possible for a Functor instance to satisfy the first Functor law
+-- but not the second (excluding undefined), the reverse is possible.
+-- Give an example of a (bogus) Functor instance which satisfies the second law but not the first.
+
+-- fmap id = id
+testIdentityEquals = (==) (IntAndSmth 5 5) (fmap id (IntAndSmth 5 5))
+-- fmap (g . h) = (fmap g) . (fmap h)
+testCompositionHolds = combined == splitted
+  where
+    combined = fmap ((+2) . (*2)) (IntAndSmth 4 4)
+    splitted = fmap (+2) $ fmap (*2) (IntAndSmth 4 4)
+
+-- Which laws are violated by the evil Functor instance for list shown above: both laws,
+-- or the first law alone? Give specific counterexamples.
+-- BOTH LAWS ARE VIOLATED
+
+class Functor' f where
+  fmap' :: (a -> b) -> f a -> f b
+
+-- fmap id = id
+-- fmap (g . h) = (fmap g) . (fmap h)
+-- Evil Functor instance - The following functor violates fmap id = id law
+instance Functor' [] where
+  fmap' _ [] = []
+  fmap' g (x:xs) = g x : g x : fmap g xs
+
+-- fmap id = id
+testEvilIdentity = [1,2,3] == fmap' id [1,2,3]
+testEvilComposition = combined == splitted
+  where
+    combined = fmap' ((+2) . (*2)) [1,2,3]
+    splitted = (fmap' (+2) . fmap' (*2)) [1,2,3]
+
+testAliasedFmap = (+3) <$> [1..3] -- [4,5,6]
+testContextWrap = (Just 1) $> 5   -- Just 5
+testVoid        = void Just 5     -- ()
+
+-- (Tricky) One might imagine a variant of the interchange law that says something about
+-- applying a pure function to an effectful argument. Using the above laws, prove that
+-- pure f <*> x = pure (flip ($)) <*> x <*> pure f
+
+-- how ??????????
+
+-- class Functor f => Applicative f where
+--   pure  :: a -> f a
+--   infixl 4 <*>, *>, <*
+--   (<*>) :: f (a -> b) -> f a -> f b
+
+--   (*>) :: f a -> f b -> f b
+--   a1 *> a2 = (id <$ a1) <*> a2
+
+--   (<*) :: f a -> f b -> f a
+--   (<*) = liftA2 const
+
+newtype ZipList a = ZipList { getZipList :: [a] } deriving (Show, Eq)
+
+instance Functor ZipList where
+  fmap f (ZipList xs) = ZipList (map f xs)
+
+-- fmap id = id
+testZipListIdentity = (==) (id (ZipList [1])) (ZipList [1])
+-- fmap (g . h) = (fmap g) . (fmap h)
+testZipListComposition = combined == splitted
+  where
+    combined = fmap ((+2) . (*2)) (ZipList [1,2,3])
+    splitted = (fmap (+2) . fmap (*2)) (ZipList [1,2,3])
+
+instance Applicative ZipList where
+  pure x = ZipList (repeat x)
+  (ZipList gs) <*> (ZipList xs) = ZipList (zipWith ($) gs xs)
+
+-- The identity law:
+-- pure id <*> v = v
+testZipListPurity = identity == self
+  where
+    identity = pure id <*> (ZipList [1..10])
+    self     = ZipList [1..10]
+
+-- Homomorphism:
+-- pure f <*> pure x = pure (f x)
+-- Intuitively, applying a non-effectful function to a non-effectful argument in an effectful
+-- context is the same as just applying the function to the argument and then injecting the
+-- result into the context with pure.
+
+testZipListHomomorphism = splitPure == combinedPure
+  where
+    splitPure    = (pure (+2)) <*> (pure 2 :: ZipList Int)
+    combinedPure = (pure ((+2) 2) :: ZipList Int)
+
+-- TODO
+
+-- Interchange:
+-- u <*> pure y = pure ($ y) <*> u
+-- Intuitively, this says that when evaluating the application of an effectful function to a
+-- pure argument, the order in which we evaluate the function and its argument doesn't matter.
+
+-- TODO
+
+-- Composition:
+-- u <*> (v <*> w) = pure (.) <*> u <*> v <*> w
+-- This one is the trickiest law to gain intuition for. In some sense it is expressing a sort
+-- of associativity property of (<*>). The reader may wish to simply convince themselves that 
+-- this law is type-correct.
+
+-- TODO
