@@ -114,9 +114,9 @@ instance Functor ZipList where
   fmap f (ZipList xs) = ZipList (map f xs)
 
 -- fmap id = id
-testZipListIdentity = (==) (id (ZipList [1])) (ZipList [1])
+testFunctorZipListIdentity = (==) (id (ZipList [1])) (ZipList [1])
 -- fmap (g . h) = (fmap g) . (fmap h)
-testZipListComposition = combined == splitted
+testFunctorZipListComposition = combined == splitted
   where
     combined = fmap ((+2) . (*2)) (ZipList [1,2,3])
     splitted = (fmap (+2) . fmap (*2)) (ZipList [1,2,3])
@@ -127,7 +127,7 @@ instance Applicative ZipList where
 
 -- The identity law:
 -- pure id <*> v = v
-testZipListPurity = identity == self
+testApplicativeZipListPurity = identity == self
   where
     identity = pure id <*> (ZipList [1..10])
     self     = ZipList [1..10]
@@ -138,24 +138,28 @@ testZipListPurity = identity == self
 -- context is the same as just applying the function to the argument and then injecting the
 -- result into the context with pure.
 
-testZipListHomomorphism = splitPure == combinedPure
+testApplicativeZipListHomomorphism = splitPure == combinedPure
   where
     splitPure    = (pure (+2)) <*> (pure 2 :: ZipList Int)
     combinedPure = (pure ((+2) 2) :: ZipList Int)
-
--- TODO
 
 -- Interchange:
 -- u <*> pure y = pure ($ y) <*> u
 -- Intuitively, this says that when evaluating the application of an effectful function to a
 -- pure argument, the order in which we evaluate the function and its argument doesn't matter.
 
--- TODO
+testApplicativeZipListInterchange = forward == backward
+  where
+    forward  = (ZipList [(+1), (+2)]) <*> pure 1
+    backward = pure ($ 1) <*> (ZipList [(+1), (+2)])
 
 -- Composition:
 -- u <*> (v <*> w) = pure (.) <*> u <*> v <*> w
 -- This one is the trickiest law to gain intuition for. In some sense it is expressing a sort
--- of associativity property of (<*>). The reader may wish to simply convince themselves that 
+-- of associativity property of (<*>). The reader may wish to simply convince themselves that
 -- this law is type-correct.
 
--- TODO
+testApplicativeZipListComposition = forward == backward
+  where
+    forward  = (ZipList [(+1)]) <*> ((ZipList [(*2)]) <*> (ZipList [1]))
+    backward = pure (.) <*> (ZipList [(+1)]) <*> (ZipList [(*2)]) <*> (ZipList [1])
