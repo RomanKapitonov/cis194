@@ -80,16 +80,16 @@ instance Functor' [] where
   fmap' _ [] = []
   fmap' g (x:xs) = g x : g x : fmap g xs
 
--- fmap id = id
-testEvilIdentity = [1,2,3] == fmap' id [1,2,3]
-testEvilComposition = combined == splitted
-  where
-    combined = fmap' ((+2) . (*2)) [1,2,3]
-    splitted = (fmap' (+2) . fmap' (*2)) [1,2,3]
+-- -- fmap id = id
+-- testEvilIdentity = [1,2,3] == fmap' id [1,2,3]
+-- testEvilComposition = combined == splitted
+--   where
+--     combined = fmap' ((+2) . (*2)) [1,2,3]
+--     splitted = (fmap' (+2) . fmap' (*2)) [1,2,3]
 
-testAliasedFmap = (+3) <$> [1..3] -- [4,5,6]
-testContextWrap = (Just 1) $> 5   -- Just 5
-testVoid        = void Just 5     -- ()
+-- testAliasedFmap = (+3) <$> [1..3] -- [4,5,6]
+-- testContextWrap = (Just 1) $> 5   -- Just 5
+-- testVoid        = void Just 5     -- ()
 
 -- (Tricky) One might imagine a variant of the interchange law that says something about
 -- applying a pure function to an effectful argument. Using the above laws, prove that
@@ -127,6 +127,7 @@ instance Applicative ZipList where
 
 -- The identity law:
 -- pure id <*> v = v
+
 testApplicativeZipListPurity = identity == self
   where
     identity = pure id <*> (ZipList [1..10])
@@ -163,3 +164,62 @@ testApplicativeZipListComposition = forward == backward
   where
     forward  = (ZipList [(+1)]) <*> ((ZipList [(*2)]) <*> (ZipList [1]))
     backward = pure (.) <*> (ZipList [(+1)]) <*> (ZipList [(*2)]) <*> (ZipList [1])
+
+-- Implement a function
+-- sequenceAL :: Applicative f => [f a] -> f [a]
+-- . There is a generalized version of this, sequenceA, which works for any Traversable
+-- (see the later section on Traversable), but implementing this version specialized to lists
+-- is a good exercise.
+
+-- sequenceAL [(+3),(+2),(+1)] == \a -> [(a + 3), (a + 2), (a + 1)]
+-- [(Just (+1)), (Just (+5))] -> Just [(+3), (+5)]
+-- sequenceA [(+3),(+2),(+1)] 3
+-- fmap :: (a -> b)
+
+-- (<*>) :: [a -> b] -> [a] -> [b]
+sequenceAL :: Applicative f => [f a] -> f [a]
+sequenceAL []     = pure []
+sequenceAL (x:xs) = ((fmap (:) x) <*>) (sequenceAL xs)
+
+-- liftA2 :: Applicative f => (a -> b -> c) -> (f a -> f b -> f c)
+
+-- CONTEXT == ((->) r)
+-- sequenceA [(+3),(+2),(+1)] = (:) <$> (+3) <*> sequenceA [(+2),(+1)]
+-- sequenceA [(+2),(+1)]      = (:) <$> (+2) <*> sequenceA [(+1)]
+-- sequenceA [(+1)]           = (:) <$> (+1) <*> sequenceA []
+-- sequenceA []               = pure []
+
+-- Let's look at the last line. pure [] takes an empty list and puts it inside some applicative 
+-- structure. As we've just seen, the applicative structure in this case is ((->) r). 
+-- Because of this, sequenceA [] = pure [] = const [].
+
+-- Now, line 3 can be written as:
+
+-- sequenceA [(+1)] = (:) <$> (+1) <*> const []
+
+-- sequenceAL :: Applicative f => [f a] -> f [a]
+-- f = (->) r
+-- [r -> a] -> (r -> [a])
+
+-- Functor f => (a -> b) -> f a -> f b
+-- Applicative f => f (a -> b) -> f a -> f b
+
+-- sequenceA [(+3),(+2),(+1)] == \a -> [(a + 3), (a + 2), (a + 1)]
+--                        fmap (:) (Just 1) <*> pure []
+-- fmap (:) (Just 2) <*> (fmap (:) (Just 1) <*> pure [])
+
+-- [Just 1, Just 2, Just 3] -> Just [1, 2, 3]
+-- (Just 1) <*> pure [Just 3]
+
+-- :t (pure [])
+-- (pure [])                  :: Applicative f => f [a -> b]
+-- :t (<*> pure [])
+-- (<*> pure [])              :: Applicative f => f ([a -> b] -> b) -> f b
+-- :t ((3+) <*> pure [])
+-- ((3+) <*> pure [])         :: Num ([a -> b] -> b) => ([a -> b] -> b) -> b
+-- :t ((<$>) (3+) <*> pure [])
+-- ((<$>) (3+) <*> pure [])   :: Num b => ([a -> b] -> b) -> b
+-- :t ((:) <$> (3+) <*> pure [])
+-- ((:) <$> (3+) <*> pure []) :: Num a => a -> [a]
+
+
