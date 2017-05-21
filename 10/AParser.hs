@@ -103,3 +103,81 @@ instance Applicative Parser where
   p1 <*> p2 = Parser (\str -> case runParser p1 str of
                       Nothing -> Nothing
                       Just (f, remstr) -> first f <$> (runParser p2 remstr))
+
+-- Exercise 3
+-- We can also test your Applicative instance using other simple
+-- applications of functions to multiple parsers. You should implement
+-- each of the following exercises using the Applicative interface to put
+-- together simpler parsers into more complex ones. Do not implement
+-- them using the low-level definition of a Parser! In other words, pretend
+-- that you do not have access to the Parser constructor or even
+-- know how the Parser type is defined.
+-- • Create a parser
+-- abParser :: Parser (Char, Char)
+-- which expects to see the characters ’a’ and ’b’ and returns them
+-- as a pair. That is,
+-- *AParser> runParser abParser "abcdef"
+-- Just ((’a’,’b’),"cdef")
+-- *AParser> runParser abParser "aebcdf"
+-- Nothing
+
+abParser :: Parser (Char, Char)
+abParser = (,) <$> char 'a' <*> char 'b'
+
+abParser_ :: Parser ()
+abParser_ = const () <$> abParser
+
+-- *Parser> runParser intPair "12 34"
+-- Just ([12,34],"")
+intPair :: Parser [Integer]
+intPair = (\a _ b -> [a, b]) <$> posInt <*> char ' ' <*> posInt
+
+-- Exercise 4
+-- Applicative by itself can be used to make parsers for simple, fixed
+-- formats. But for any format involving choice (e.g. “. . . after the colon
+-- there can be a number or a word or parentheses. . . ”) Applicative is
+-- not quite enough. To handle choice we turn to the Alternative class,
+-- defined (essentially) as follows:
+-- class Applicative f => Alternative f where
+-- empty :: f a
+-- (<|>) :: f a -> f a -> f a
+-- (<|>) is intended to represent choice: that is, f1 <|> f2 represents
+-- a choice between f1 and f2. empty should be the identity element for
+-- (<|>), and often represents failure.
+-- Write an Alternative instance for Parser:
+-- • empty represents the parser which always fails.
+-- • p1 <|> p2 represents the parser which first tries running p1. If
+-- p1 succeeds then p2 is ignored and the result of p1 is returned.
+-- Otherwise, if p1 fails, then p2 is tried instead.
+-- Hint: there is already an Alternative instance for Maybe which you
+-- may find useful.
+
+-- class Applicative f => Alternative f where
+--   empty :: f a
+--   (<|>) :: f a -> f a -> f a
+
+instance Alternative Parser where
+  empty = Parser (const Nothing)
+  p1 <|> p2 = Parser f
+    where
+      f str = runParser p1 str <|> runParser p2 str
+
+-- Exercise 5
+-- Implement a parser
+-- intOrUppercase :: Parser ()
+-- which parses either an integer value or an uppercase character, and
+-- fails otherwise.
+-- *Parser> runParser intOrUppercase "342abcd"
+-- Just ((), "abcd")
+-- *Parser> runParser intOrUppercase "XYZ"
+-- Just ((), "YZ")
+-- *Parser> runParser intOrUppercase "foo"
+-- Nothing
+-- Next week, we will use your parsing framework to build a more
+-- sophisticated parser for a small programming language!
+
+intOrUppercase :: Parser ()
+intOrUppercase = satisfyInt <|> satisfyUpper
+  where
+    satisfyInt   = const () <$> posInt
+    satisfyUpper = const () <$> satisfy isUpper
