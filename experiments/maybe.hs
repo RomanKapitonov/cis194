@@ -30,8 +30,8 @@ instance MyMonad MyMaybe where
 
 testFunctor = fmap (+3) (MyJust 5)
 testApplicative = (MyJust (+3)) <*> (MyJust 5)
-testMonad = (MyJust 3) >>= add5
-  where add5 x = MyJust (x + 5)
+add5 x = MyJust (x + 5)
+testMonad = (MyJust 3) >>= add5 >>= add5 >>= add5
 
 main = do
   (putStrLn . show) testFunctor

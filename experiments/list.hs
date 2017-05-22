@@ -14,6 +14,7 @@ class (MyFunctor f) => MyApplicative f where
 
 instance MyApplicative [] where
   pure x = [x]
+  [] <*> _ = []
   fs <*> xs = [f x | f <- fs, x <- xs]
 
 class MyApplicative m => MyMonad m where

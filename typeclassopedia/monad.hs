@@ -68,14 +68,11 @@ instance Functor f => Functor (Free f) where
   fmap f (Var x) = Var (f x)
   fmap f (Node x) = Node $ fmap (\e -> fmap f e) x
 
--- class (Functor f) => Applicative f where
---   pure  :: a -> f a
---   (<*>) :: f (a -> b) -> f a -> f b
+class Applicative m => MyJoinMonad m where
+  join'   :: m (m a) -> m a
+  (>>>==) :: m a -> (a -> m b) -> m b
 
-instance Applicative (Free f) where
-  pure = Var
+instance MyJoinMonad [] where
+  join' x = x >>>== id
+  x >>>== f = join' (fmap f x)
 
-
-
-instance MyMonad (Free f) where
-  return = undefined
